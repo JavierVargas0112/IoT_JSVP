@@ -1,0 +1,35 @@
+<circuit version="1.1.0-SR2" rev="260312" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="Subcircuit" CircId="Uno-1" mainComp="false" Show_id="true" Show_Val="false" Pos="-16,-116" rotation="0" hflip="1" vflip="1" label="Uno-1" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Logic_Symbol="false">
+<mainCompProps MainCompId="mega328-109" Frequency="16 MHz" Program="capteur_dht22.hex" Auto_Load="false" saveEepr="true" MainMcu="true" SerialMon="-1" />
+</item>
+
+<item itemtype="Led" CircId="Led-2" mainComp="false" Show_id="false" Show_Val="false" Pos="-132,-76" rotation="-540" hflip="1" vflip="1" label="Led-2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Color="Red" Grounded="false" Threshold="1.8 V" MaxCurrent="30 mA" Resistance="0.6 Ω" />
+
+<item itemtype="Resistor" CircId="Resistor-5" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-72,-76" rotation="0" hflip="1" vflip="1" label="Resistor-5" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="100 Ω" />
+
+<item itemtype="Resistor" CircId="Resistor-6" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-68,4" rotation="0" hflip="1" vflip="1" label="Resistor-6" idLabPos="-16,-24" labelrot="0" valLabPos="-11.7484,-22.9881" valLabRot="0" Resistance="100 Ω" />
+
+<item itemtype="Led" CircId="Led-7" mainComp="false" Show_id="false" Show_Val="false" Pos="-128,4" rotation="-540" hflip="1" vflip="1" label="Led-7" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Color="Green" Grounded="false" Threshold="3.5 V" MaxCurrent="30 mA" Resistance="0.6 Ω" />
+
+<item itemtype="Dht22" CircId="Dht22-9" mainComp="false" Show_id="false" Show_Val="false" Pos="228,-56" rotation="0" hflip="1" vflip="1" label="Dht22-9" idLabPos="-28,-32" labelrot="0" valLabPos="-16,20" valLabRot="0" DHT22="DHT22" TempInc="0.5 °C" HumiInc="5 _%" />
+
+<item itemtype="Node" CircId="Node-11" mainComp="false" Pos="-188,4" />
+
+<item itemtype="Connector" uid="Connector-11" startpinid="Resistor-5-rPin" endpinid="Uno-1-3" pointList="-56,-76,-8,-76" />
+
+<item itemtype="Connector" uid="Connector-13" startpinid="Resistor-6-rPin" endpinid="Uno-1-12" pointList="-52,4,-8,4" />
+
+<item itemtype="Connector" uid="Connector-18" startpinid="Uno-1-A0" endpinid="Dht22-9-inPin" pointList="136,-60,192,-60" />
+
+<item itemtype="Connector" uid="Connector-27" startpinid="Led-2-lPin" endpinid="Resistor-5-lPin" pointList="-116,-76,-88,-76" />
+
+<item itemtype="Connector" uid="Connector-28" startpinid="Led-7-lPin" endpinid="Resistor-6-lPin" pointList="-112,4,-84,4" />
+
+<item itemtype="Connector" uid="Connector-30" startpinid="Uno-1-GND2" endpinid="Node-11-1" pointList="-8,20,-188,20,-188,4" />
+
+<item itemtype="Connector" uid="Connector-31" startpinid="Led-7-rPin" endpinid="Node-11-0" pointList="-144,4,-188,4" />
+
+<item itemtype="Connector" uid="Connector-32" startpinid="Node-11-2" endpinid="Led-2-rPin" pointList="-188,4,-188,-76,-148,-76" />
+
+</circuit>

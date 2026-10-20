@@ -24,8 +24,6 @@
 
 <item itemtype="Node" CircId="Node-33" mainComp="false" Pos="-348,-68" />
 
-<item itemtype="Node" CircId="Node-34" mainComp="false" Pos="-356,-68" />
-
 <item itemtype="Connector" uid="Connector-30" startpinid="ResistorDip-12-resistor2-ePin5" endpinid="Uno-1-7" pointList="-340,-144,-340,-200,-212,-200" />
 
 <item itemtype="Connector" uid="Connector-31" startpinid="ResistorDip-12-resistor1-ePin3" endpinid="Uno-1-6" pointList="-348,-144,-348,-208,-212,-208" />
@@ -86,10 +84,6 @@
 
 <item itemtype="Connector" uid="Connector-129" startpinid="Node-33-2" endpinid="Node-32-0" pointList="-348,-68,-340,-68" />
 
-<item itemtype="Connector" uid="Connector-130" startpinid="LedBar-11-led7-pinN" endpinid="Node-34-1" pointList="-356,-72,-356,-68" />
-
-<item itemtype="Connector" uid="Connector-131" startpinid="Voltimeter-24-lPin" endpinid="Node-34-0" pointList="-436,-136,-396,-136,-396,-68,-356,-68" />
-
-<item itemtype="Connector" uid="Connector-132" startpinid="Node-34-2" endpinid="Node-33-0" pointList="-356,-68,-348,-68" />
+<item itemtype="Connector" uid="Connector-133" startpinid="LedBar-11-led7-pinN" endpinid="Node-33-0" pointList="-356,-72,-356,-68,-348,-68" />
 
 </circuit>
