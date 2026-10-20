@@ -1,0 +1,19 @@
+#Fichies temporaires et du systemes
+
+*.tmp
+*.log
+
+
+#Parametres locaux et secrets
+.env
+.env.*
+
+
+#Environemments Python et caches
+
+__pycache__/
+.venv/
+venv/
+
+#repertoires Python et caches 
+node_modules/
