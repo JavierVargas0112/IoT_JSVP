@@ -1,8 +1,10 @@
-// TempHumiX : LED de vie 2 Hz, lecture DHT22 toutes les 2 s,
-// dateur, affichage LCD et envoi sur le port série
+// TempHumiX : Arduino UNO R4 WiFi
+// LED de vie, lecture DHT22 toutes les 2 s, date/heure fournie par le RTC
+// interne, affichage LCD Grove RGB et envoi sur le port série.
+// Machine d'état cadencée à 500 ms par delay(500).
 #include <Wire.h>
 #include <DHT.h>
-#include <rgb_lcd.h> 
+#include <rgb_lcd.h>
 #include <RTC.h>
 
 #define PIN_LED_VIE 2
@@ -13,43 +15,19 @@
 rgb_lcd lcd;
 DHT dht(PIN_DHT, DHT22);
 
-// Dateur (mois de 30 jours)
-int jour = 10, mois = 2, annee = 25;
-int heure = 13, minute = 42, seconde = 29;
+// Etats de la machine d'état (1 état = 500 ms, cycle complet = 2 s)
+enum Etat
+{
+  LECTURE_CAPTEUR, // t = 0 ms    : lecture DHT22
+  ATTENTE_1,       // t = 500 ms
+  ATTENTE_2,       // t = 1000 ms
+  ATTENTE_3        // t = 1500 ms
+};
 
+Etat etat = LECTURE_CAPTEUR;
+bool ledVie = false;
 float temperature = 0;
 float humidite = 0;
-unsigned int tick = 0; // 1 tick = 100 ms
-
-void avancerDate()
-{
-  seconde++;
-  if (seconde == 60)
-  {
-    seconde = 0;
-    minute++;
-  }
-  if (minute == 60)
-  {
-    minute = 0;
-    heure++;
-  }
-  if (heure == 24)
-  {
-    heure = 0;
-    jour++;
-  }
-  if (jour == 31)
-  {
-    jour = 1;
-    mois++;
-  }
-  if (mois == 13)
-  {
-    mois = 1;
-    annee++;
-  }
-}
 
 void afficherBargraphe()
 {
@@ -58,6 +36,64 @@ void afficherBargraphe()
   {
     digitalWrite(PIN_BARGRAPH + i, i < nb ? HIGH : LOW);
   }
+}
+
+// Ligne 1 du LCD : date et heure lues dans le RTC
+void afficherDate()
+{
+  char date[21];
+  RTCTime maintenant;
+  RTC.getTime(maintenant);
+
+  int jour = maintenant.getDayOfMonth();
+  int mois = Month2int(maintenant.getMonth());
+  // Le LCD fait 16 caractères : pas d'espace si jour et mois ont 2 chiffres
+  const char *format = (jour >= 10 && mois >= 10) ? "%d/%d/%02d%02d:%02d:%02d"
+                                                  : "%d/%d/%02d %02d:%02d:%02d";
+  sprintf(date, format,
+          jour,
+          mois,
+          maintenant.getYear() % 100,
+          maintenant.getHour(),
+          maintenant.getMinutes(),
+          maintenant.getSeconds());
+  lcd.setCursor(0, 0);
+  lcd.print(date);
+}
+
+// Lecture du DHT22, ligne 2 du LCD et envoi sur le port série
+void lireCapteur()
+{
+  char ligne[21];
+  char txtT[8];
+  char txtH[8];
+
+  float t = dht.readTemperature();
+  float h = dht.readHumidity();
+  if (!isnan(t) && !isnan(h))
+  {
+    temperature = t;
+    humidite = h;
+  }
+  afficherBargraphe();
+
+  dtostrf(temperature, 4, 1, txtT);
+  dtostrf(humidite, 4, 1, txtH);
+
+  RTCTime maintenant;
+  RTC.getTime(maintenant);
+  Serial.println(maintenant.toString()); // format AAAA-MM-JJTHH:MM:SS
+  Serial.print("Temperature : ");
+  Serial.print(txtT);
+  Serial.println(" oC");
+  Serial.print("Humidite    : ");
+  Serial.print(txtH);
+  Serial.println(" %");
+  Serial.println();
+
+  sprintf(ligne, "T %soC/H %s%%", txtT, txtH);
+  lcd.setCursor(0, 1);
+  lcd.print(ligne);
 }
 
 void setup()
@@ -69,66 +105,45 @@ void setup()
   }
   Serial.begin(9600);
   lcd.begin(16, 2);
-  lcd.setRGB(0, 0 , 255);
+  lcd.setRGB(0, 0, 255);
   dht.begin();
+
+  // Initialisation du RTC avec une date de départ
+  // (elle sera remplacée par la synchronisation NTP en 6.1.3)
+  RTC.begin();
+  RTCTime depart(21, Month::OCTOBER, 2026, 14, 0, 0,
+                 DayOfWeek::WEDNESDAY, SaveLight::SAVING_TIME_INACTIVE);
+  RTC.setTime(depart);
 }
 
 void loop()
 {
-  char date[21];
-  char ligne[21];
-  char txtT[8];
-  char txtH[8];
+  // LED de vie : change d'état toutes les 500 ms
+  ledVie = !ledVie;
+  digitalWrite(PIN_LED_VIE, ledVie ? HIGH : LOW);
 
-  // a) LED de vie à 2 Hz : période 500 ms = 5 ticks
-  digitalWrite(PIN_LED_VIE, (tick % 5) < 2 ? HIGH : LOW);
+  // Date/heure rafraîchie à chaque tour (500 ms) pour ne sauter aucune seconde
+  afficherDate();
 
-  // c) Dateur : +1 seconde tous les 10 ticks
-  if (tick % 10 == 0)
+  switch (etat)
   {
-    avancerDate();
+  case LECTURE_CAPTEUR:
+    lireCapteur();
+    etat = ATTENTE_1;
+    break;
+
+  case ATTENTE_1:
+    etat = ATTENTE_2;
+    break;
+
+  case ATTENTE_2:
+    etat = ATTENTE_3;
+    break;
+
+  case ATTENTE_3:
+    etat = LECTURE_CAPTEUR;
+    break;
   }
 
-  // b) Lecture du DHT22 toutes les 2000 ms = 20 ticks
-  if (tick % 20 == 0)
-  {
-    float t = dht.readTemperature();
-    float h = dht.readHumidity();
-    if (!isnan(t) && !isnan(h))
-    {
-      temperature = t;
-      humidite = h;
-    }
-    afficherBargraphe();
-
-    dtostrf(temperature, 4, 1, txtT);
-    dtostrf(humidite, 4, 1, txtH);
-
-    // f) Envoi sur le port série
-    sprintf(date, "%d/%d/%02d %02d:%02d:%02d", jour, mois, annee, heure, minute, seconde);
-    Serial.println(date);
-    Serial.print("Temperature : ");
-    Serial.print(txtT);
-    Serial.println(" oC");
-    Serial.print("Humidite    : ");
-    Serial.print(txtH);
-    Serial.println(" %");
-    Serial.println();
-
-    // e) Ligne 2 du LCD : température et humidité
-    sprintf(ligne, "T %soC/H %s%%", txtT, txtH);
-    lcd.setCursor(0, 1);
-    lcd.print(ligne);
-  }
-
-  // d) Ligne 1 du LCD : date et heure (chaque seconde)
-  if (tick % 10 == 0)
-  {
-    sprintf(date, "%d/%d/%02d %02d:%02d:%02d", jour, mois, annee, heure, minute, seconde);
-    lcd.setCursor(0, 0);
-    lcd.print(date);
-  }
-
-  tick++;
-  delay(100);
+  delay(500);
 }
