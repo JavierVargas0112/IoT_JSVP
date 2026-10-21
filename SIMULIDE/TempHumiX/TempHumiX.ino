@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <DHT.h>
 #include <rgb_lcd.h> 
+#include <RTC.h>
 
 #define PIN_LED_VIE 2
 #define PIN_BARGRAPH 3 // bargraphe sur les broches 3 à 12
