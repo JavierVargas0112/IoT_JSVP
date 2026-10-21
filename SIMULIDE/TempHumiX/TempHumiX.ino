@@ -1,19 +1,38 @@
 // TempHumiX : Arduino UNO R4 WiFi
 // LED de vie, lecture DHT22 toutes les 2 s, date/heure fournie par le RTC
-// interne, affichage LCD Grove RGB et envoi sur le port série.
+// interne synchronisé par NTP, affichage LCD Grove RGB et port série.
 // Machine d'état cadencée à 500 ms par delay(500).
 #include <Wire.h>
 #include <DHT.h>
 #include <rgb_lcd.h>
 #include <RTC.h>
+#include <WiFiS3.h>   // WiFi du module ESP32-S3 du UNO R4 WiFi
+#include <WiFiUdp.h>
+#include <NTPClient.h>
+
+#define VERSION "1.0"
 
 #define PIN_LED_VIE 2
 #define PIN_BARGRAPH 3 // bargraphe sur les broches 3 à 12
 #define NB_LEDS 10
 #define PIN_DHT A0
 
+// Paramètres WIFI (paragraphe 5.1.1)
+// Le réseau "IoT IMT Nord Europe 5G" ne fonctionne pas : le module
+// ESP32-S3 du UNO R4 ne gère que la bande 2,4 GHz.
+#define WIFI_SSID "IoT IMT Nord Europe"
+#define WIFI_MDP "<mot de passe 5.1.1>"
+#define WIFI_NB_ESSAIS 3
+
+// Serveur NTP de IMT Nord Europe
+#define NTP_SERVEUR "10.12.130.1"
+#define FUSEAU_HORAIRE 7200   // UTC+2 (heure d'été), 3600 en heure d'hiver
+#define NTP_CYCLES_RELANCE 30 // nouvel essai NTP toutes les 30 x 2 s = 1 min
+
 rgb_lcd lcd;
 DHT dht(PIN_DHT, DHT22);
+WiFiUDP ntpUDP;
+NTPClient ntpClient(ntpUDP, NTP_SERVEUR, FUSEAU_HORAIRE);
 
 // Etats de la machine d'état (1 état = 500 ms, cycle complet = 2 s)
 enum Etat
@@ -28,6 +47,84 @@ Etat etat = LECTURE_CAPTEUR;
 bool ledVie = false;
 float temperature = 0;
 float humidite = 0;
+bool wifiOk = false;
+bool ntpOk = false;
+int cyclesSansNtp = 0;
+
+// a) Connexion au réseau WIFI : retourne true si OK, false sinon
+bool setup_wifi()
+{
+  if (WiFi.status() == WL_NO_MODULE)
+  {
+    Serial.println("Module WIFI absent");
+    return false;
+  }
+
+  for (int essai = 1; essai <= WIFI_NB_ESSAIS; essai++)
+  {
+    Serial.print("Connexion a ");
+    Serial.print(WIFI_SSID);
+    Serial.print(" (essai ");
+    Serial.print(essai);
+    Serial.println(")");
+    if (WiFi.begin(WIFI_SSID, WIFI_MDP) == WL_CONNECTED)
+    {
+      // l'adresse IP (DHCP) peut arriver un peu après la connexion
+      for (int i = 0; i < 20 && WiFi.localIP() == IPAddress(0, 0, 0, 0); i++)
+      {
+        delay(100);
+      }
+      return true;
+    }
+    delay(1000);
+  }
+  return false;
+}
+
+// e) Mise à l'heure du RTC depuis le serveur NTP : retourne true si OK
+// forceUpdate() attend au plus 1 s la réponse : le programme n'est pas bloqué
+bool synchroniserNTP()
+{
+  if (!wifiOk || !ntpClient.forceUpdate())
+  {
+    Serial.println("Synchronisation NTP impossible");
+    return false;
+  }
+  RTCTime maintenant((time_t)ntpClient.getEpochTime());
+  RTC.setTime(maintenant);
+  Serial.print("RTC synchronise : ");
+  Serial.println(maintenant.toString());
+  return true;
+}
+
+// d) Ecran d'accueil : version + date sur la ligne 1, adresse IP sur la ligne 2
+void afficherAccueil()
+{
+  char ligne[21];
+  RTCTime maintenant;
+  RTC.getTime(maintenant);
+
+  sprintf(ligne, "V%s  %02d/%02d/%04d", VERSION,
+          maintenant.getDayOfMonth(),
+          Month2int(maintenant.getMonth()),
+          maintenant.getYear());
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(ligne);
+  lcd.setCursor(0, 1);
+  if (wifiOk)
+  {
+    lcd.print(WiFi.localIP());
+  }
+  else
+  {
+    lcd.print("WIFI deconnecte");
+  }
+
+  Serial.println(ligne);
+  Serial.print("Adresse IP : ");
+  Serial.println(WiFi.localIP());
+}
 
 void afficherBargraphe()
 {
@@ -39,9 +136,17 @@ void afficherBargraphe()
 }
 
 // Ligne 1 du LCD : date et heure lues dans le RTC
+// (ou message d'erreur si le RTC n'a pas pu être synchronisé)
 void afficherDate()
 {
   char date[21];
+  if (!ntpOk)
+  {
+    lcd.setCursor(0, 0);
+    lcd.print("Pas synchro NTP ");
+    return;
+  }
+
   RTCTime maintenant;
   RTC.getTime(maintenant);
 
@@ -108,12 +213,21 @@ void setup()
   lcd.setRGB(0, 0, 255);
   dht.begin();
 
-  // Initialisation du RTC avec une date de départ
-  // (elle sera remplacée par la synchronisation NTP en 6.1.3)
   RTC.begin();
-  RTCTime depart(21, Month::OCTOBER, 2026, 14, 0, 0,
-                 DayOfWeek::WEDNESDAY, SaveLight::SAVING_TIME_INACTIVE);
-  RTC.setTime(depart);
+
+  // b) Initialisation du WIFI puis synchronisation NTP
+  lcd.print("Connexion WIFI..");
+  wifiOk = setup_wifi();
+  if (wifiOk)
+  {
+    ntpClient.begin();
+  }
+  ntpOk = synchroniserNTP();
+
+  // d) Ecran d'accueil pendant 3 s
+  afficherAccueil();
+  delay(3000);
+  lcd.clear();
 }
 
 void loop()
@@ -129,6 +243,12 @@ void loop()
   {
   case LECTURE_CAPTEUR:
     lireCapteur();
+    // e) Nouvel essai de synchronisation NTP toutes les minutes en cas d'échec
+    if (!ntpOk && ++cyclesSansNtp >= NTP_CYCLES_RELANCE)
+    {
+      cyclesSansNtp = 0;
+      ntpOk = synchroniserNTP();
+    }
     etat = ATTENTE_1;
     break;
 
