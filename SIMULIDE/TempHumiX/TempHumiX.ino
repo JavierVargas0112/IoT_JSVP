@@ -1,14 +1,15 @@
 // TempHumiX : LED de vie 2 Hz, lecture DHT22 toutes les 2 s,
 // dateur, affichage LCD et envoi sur le port série
-#include <LiquidCrystal_AIP31068_I2C.h>
+#include <Wire.h>
 #include <DHT.h>
+#include <rgb_lcd.h> 
 
 #define PIN_LED_VIE 2
 #define PIN_BARGRAPH 3 // bargraphe sur les broches 3 à 12
 #define NB_LEDS 10
 #define PIN_DHT A0
 
-LiquidCrystal_AIP31068_I2C lcd(0x3E, 16, 2);
+rgb_lcd lcd;
 DHT dht(PIN_DHT, DHT22);
 
 // Dateur (mois de 30 jours)
@@ -66,7 +67,8 @@ void setup()
     pinMode(PIN_BARGRAPH + i, OUTPUT);
   }
   Serial.begin(9600);
-  lcd.init();
+  lcd.begin(16, 2);
+  lcd.setRGB(0, 0 , 255);
   dht.begin();
 }
 
