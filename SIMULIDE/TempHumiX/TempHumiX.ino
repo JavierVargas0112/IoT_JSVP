@@ -22,15 +22,10 @@
 #define WIFI_SSID SECRET_WIFI_SSID
 #define WIFI_MDP SECRET_WIFI_MDP  
 
-// Paramètres WIFI (paragraphe 5.1.1)
-// Le réseau "IoT IMT Nord Europe 5G" ne fonctionne pas : le module
-// ESP32-S3 du UNO R4 ne gère que la bande 2,4 GHz.
-#define WIFI_SSID "IoT IMT Nord Europe"
-#define WIFI_MDP "<mot de passe 5.1.1>"
 #define WIFI_NB_ESSAIS 3
 
 // Serveur NTP de IMT Nord Europe
-#define NTP_SERVEUR "10.12.130.1"
+#define NTP_SERVEUR "192.168.1.254" 
 #define FUSEAU_HORAIRE 3600   // UTC+2 (heure d'été), 3600 en heure d'hiver
 #define NTP_CYCLES_RELANCE 30 // nouvel essai NTP toutes les 30 x 2 s = 1 min
 
