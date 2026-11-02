@@ -12,6 +12,8 @@
 
 #include "arduino_secrets.h"
 
+#include <ArduinoMqttClient.h>
+
 #define VERSION "1.0"
 
 #define PIN_LED_VIE 2
@@ -29,10 +31,28 @@
 #define FUSEAU_HORAIRE 3600   // UTC+2 (heure d'été), 3600 en heure d'hiver
 #define NTP_CYCLES_RELANCE 30 // nouvel essai NTP toutes les 30 x 2 s = 1 min
 
+//MQTT
+#define ID_PC "44987"
+#define MQTT_BROKER "192.168.1.1"
+#define MQTT_PORT 1883
+#define MQTT_ID "IDO_Client_" ID_PC
+#define MQTT_CYCLES_RELANCE 5
+
+
+// Topics publiés (paragraphe 3.2)
+#define TOPIC_VERSION "/iot/VERSION_" ID_PC
+#define TOPIC_TEMPERATURE "/iot/TEMPERATURE_" ID_PC
+#define TOPIC_HUMIDITE "/iot/HUMIDITY_" ID_PC
+#define TOPIC_DATE "/iot/GET_DATE_" ID_PC
+
 rgb_lcd lcd;
 DHT dht(PIN_DHT, DHT22);
 WiFiUDP ntpUDP;
 NTPClient ntpClient(ntpUDP, NTP_SERVEUR, FUSEAU_HORAIRE);
+
+WiFiClient wifiClient;
+MqttClient mqttClient(wifiClient);
+
 
 // Etats de la machine d'état (1 état = 500 ms, cycle complet = 2 s)
 enum Etat
@@ -50,6 +70,7 @@ float humidite = 0;
 bool wifiOk = false;
 bool ntpOk = false;
 int cyclesSansNtp = 0;
+int cyclesSansMqtt = 0;
 
 // a) Connexion au réseau WIFI : retourne true si OK, false sinon
 bool setup_wifi()
@@ -80,6 +101,77 @@ bool setup_wifi()
   }
   return false;
 }
+
+
+// Connexion au broker MQTT : retourne 0 si OK, code erreur MQTT sinon
+int setup_mqtt()
+{
+  if (!wifiOk)
+  {
+    return MQTT_CONNECTION_REFUSED;
+  }
+
+  mqttClient.setId(MQTT_ID);
+  mqttClient.setUsernamePassword(SECRET_MQTT_USER, SECRET_MQTT_MDP);
+  Serial.print("Connexion au broker MQTT en tant que ");
+  Serial.println(MQTT_ID);
+
+  if (!mqttClient.connect(MQTT_BROKER, MQTT_PORT))
+  {
+    int erreur = mqttClient.connectError();
+    Serial.print("Echec connexion MQTT, code erreur : ");
+    Serial.println(erreur);
+    return erreur;
+  }
+  Serial.println("Connecte au broker MQTT");
+  return 0;
+}
+
+void formaterDate(char *texte)
+{
+   RTCTime maintenant;
+  RTC.getTime(maintenant);
+  sprintf(texte, "%02d/%02d/%04d %02d:%02d:%02d",
+          maintenant.getDayOfMonth(),
+          Month2int(maintenant.getMonth()),
+          maintenant.getYear(),
+          maintenant.getHour(),
+          maintenant.getMinutes(),
+          maintenant.getSeconds());
+}
+
+
+
+void publierMessage(const char *topic, const char *valeur)
+{
+  mqttClient.beginMessage(topic);
+  mqttClient.print(valeur);
+  mqttClient.endMessage();
+}
+
+void publierDonnees()
+{
+  char texte[24];
+  if (!mqttClient.connected())
+  {
+    return;
+  }
+
+  publierMessage(TOPIC_VERSION, VERSION);
+  dtostrf(temperature, 0, 1, texte); 
+
+  publierMessage(TOPIC_TEMPERATURE, texte);
+  dtostrf(humidite, 0, 1, texte);
+  publierMessage(TOPIC_HUMIDITE, texte);
+
+  formaterDate(texte);
+
+  publierMessage(TOPIC_DATE, texte);
+}
+
+
+
+
 
 // e) Mise à l'heure du RTC depuis le serveur NTP : retourne true si OK
 // forceUpdate() attend au plus 1 s la réponse : le programme n'est pas bloqué
@@ -223,6 +315,8 @@ void setup()
     ntpClient.begin();
   }
   ntpOk = synchroniserNTP();
+  setup_mqtt();
+
 
   // d) Ecran d'accueil pendant 3 s
   afficherAccueil();
@@ -232,6 +326,7 @@ void setup()
 
 void loop()
 {
+  mqttClient.poll();
   // LED de vie : change d'état toutes les 500 ms
   ledVie = !ledVie;
   digitalWrite(PIN_LED_VIE, ledVie ? HIGH : LOW);
@@ -243,6 +338,13 @@ void loop()
   {
   case LECTURE_CAPTEUR:
     lireCapteur();
+    publierDonnees();
+
+     if (!mqttClient.connected() && ++cyclesSansMqtt >= MQTT_CYCLES_RELANCE)
+    {
+      cyclesSansMqtt = 0;
+      setup_mqtt();
+    }
     // e) Nouvel essai de synchronisation NTP toutes les minutes en cas d'échec
     if (!ntpOk && ++cyclesSansNtp >= NTP_CYCLES_RELANCE)
     {
