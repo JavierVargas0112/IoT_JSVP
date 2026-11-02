@@ -10,12 +10,17 @@
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 
+#include "arduino_secrets.h"
+
 #define VERSION "1.0"
 
 #define PIN_LED_VIE 2
 #define PIN_BARGRAPH 3 // bargraphe sur les broches 3 à 12
 #define NB_LEDS 10
 #define PIN_DHT A0
+
+#define WIFI_SSID SECRET_WIFI_SSID
+#define WIFI_MDP SECRET_WIFI_MDP  
 
 // Paramètres WIFI (paragraphe 5.1.1)
 // Le réseau "IoT IMT Nord Europe 5G" ne fonctionne pas : le module
@@ -26,7 +31,7 @@
 
 // Serveur NTP de IMT Nord Europe
 #define NTP_SERVEUR "10.12.130.1"
-#define FUSEAU_HORAIRE 7200   // UTC+2 (heure d'été), 3600 en heure d'hiver
+#define FUSEAU_HORAIRE 3600   // UTC+2 (heure d'été), 3600 en heure d'hiver
 #define NTP_CYCLES_RELANCE 30 // nouvel essai NTP toutes les 30 x 2 s = 1 min
 
 rgb_lcd lcd;

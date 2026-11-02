@@ -7,7 +7,7 @@
 #Parametres locaux et secrets
 .env
 .env.*
-
+arduino_secrets.h.ino
 
 #Environemments Python et caches
 
@@ -20,3 +20,4 @@ node_modules/
 
 
 Diapos/
+arduino_secrets.h
