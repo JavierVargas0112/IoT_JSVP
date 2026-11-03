@@ -45,6 +45,31 @@
 #define TOPIC_HUMIDITE "/iot/HUMIDITY_" ID_PC
 #define TOPIC_DATE "/iot/GET_DATE_" ID_PC
 
+
+//TOPIC Souscrit
+#define TOPIC_COMMANDE "/iot/COMMAND_" ID_PC
+#define TOPIC_BARGRAPHE "/iot/BARGRAPH_" ID_PC
+#define TOPIC_BLINK "/iot/BLINK_" ID_PC
+
+// Codes commande
+#define CMD_MISE_A_L_HEURE 10
+#define CMD_DEMARRAGE_MESURE 20
+#define CMD_ARRET_MESURE 30
+#define CMD_CLIGNOTEMENT_LENT 40
+#define CMD_CLIGNOTEMENT_RAPIDE 50
+#define CMD_CLIGNOTEMENT_PERSO 60
+
+
+// Périodes de la LED de vie (ms)
+#define PERIODE_LED_NORMALE 500 // 2 Hz
+#define PERIODE_LED_LENTE 2000
+#define PERIODE_LED_RAPIDE 200
+
+#define TICK_MS 100      // base de temps de la boucle
+#define TICKS_PAR_ETAT 5 // 5 x 100 ms = 500 ms par état
+
+
+
 rgb_lcd lcd;
 DHT dht(PIN_DHT, DHT22);
 WiFiUDP ntpUDP;
@@ -64,7 +89,15 @@ enum Etat
 };
 
 Etat etat = LECTURE_CAPTEUR;
-bool ledVie = false;
+
+unsigned int tick = 0;
+unsigned long tempsLed = 0;             // temps écoulé pour le clignotement (ms)
+int periodeLed = PERIODE_LED_NORMALE;   // période courante de la LED de vie
+int periodePerso = PERIODE_LED_NORMALE; // période reçue sur BLINK_
+bool mesureActive = true;               // commandes 20 / 30
+bool demandeMiseALHeure = false;        // commande 10
+int valeurBargraphe = -1;               // 0-1023 reçu sur BARGRAPH_, -1 = humidité
+
 float temperature = 0;
 float humidite = 0;
 bool wifiOk = false;
@@ -124,7 +157,90 @@ int setup_mqtt()
     return erreur;
   }
   Serial.println("Connecte au broker MQTT");
+
+  // Souscription aux 3 topics (refaite à chaque reconnexion)
+  mqttClient.subscribe(TOPIC_COMMANDE);
+  mqttClient.subscribe(TOPIC_BARGRAPHE);
+  mqttClient.subscribe(TOPIC_BLINK);
   return 0;
+}
+
+void traiterCommande(int code)
+{
+  switch (code)
+  {
+  case CMD_MISE_A_L_HEURE:
+    demandeMiseALHeure = true; // traitée dans loop() (hors du callback)
+    break;
+  case CMD_DEMARRAGE_MESURE:
+    mesureActive = true;
+    break;
+  case CMD_ARRET_MESURE:
+    mesureActive = false;
+    lcd.setCursor(0, 1);
+    lcd.print("Mesure arretee  ");
+    break;
+  case CMD_CLIGNOTEMENT_LENT:
+    periodeLed = PERIODE_LED_LENTE;
+    break;
+  case CMD_CLIGNOTEMENT_RAPIDE:
+    periodeLed = PERIODE_LED_RAPIDE;
+    break;
+  case CMD_CLIGNOTEMENT_PERSO:
+    periodeLed = periodePerso;
+    break;
+  default:
+    Serial.println("Code commande inconnu");
+    break;
+  }
+}
+
+
+void onMqttMessage(int tailleMessage)
+{
+  char message[16];
+  int i = 0;
+
+  // Acquisition du topic et du message
+  String topic = mqttClient.messageTopic();
+  while (mqttClient.available())
+  {
+    char c = mqttClient.read();
+    if (i < (int)sizeof(message) - 1)
+    {
+      message[i++] = c;
+    }
+  }
+  message[i] = '\0';
+
+  // Conversion du message en entier
+  int valeur = atoi(message);
+  Serial.print("Recu ");
+  Serial.print(topic);
+  Serial.print(" : ");
+  Serial.println(valeur);
+
+  if (topic.indexOf("COMMAND") >= 0)
+  {
+    traiterCommande(valeur);
+  }
+  else if (topic.indexOf("BARGRAPH") >= 0)
+  {
+    valeurBargraphe = constrain(valeur, 0, 1023);
+    afficherBargraphe();
+  }
+  else if (topic.indexOf("BLINK") >= 0)
+  {
+    // La période doit être un multiple de 100 ms
+    if (valeur >= TICK_MS && valeur % TICK_MS == 0)
+    {
+      periodePerso = valeur;
+    }
+    else
+    {
+      Serial.println("Periode refusee : multiple de 100 ms attendu");
+    }
+  }
 }
 
 void formaterDate(char *texte)
@@ -220,7 +336,17 @@ void afficherAccueil()
 
 void afficherBargraphe()
 {
-  int nb = humidite / 10; // humidité 0-100 % -> 0-10 LEDs
+
+  int nb;
+  if (valeurBargraphe >= 0)
+  {
+    nb = map(valeurBargraphe, 0, 1023, 0, NB_LEDS); // valeur reçue par MQTT
+  }
+  else
+  {
+    nb = humidite / 10; // humidité 0-100 % -> 0-10 LEDs
+  }
+
   for (int i = 0; i < NB_LEDS; i++)
   {
     digitalWrite(PIN_BARGRAPH + i, i < nb ? HIGH : LOW);
@@ -316,7 +442,7 @@ void setup()
   }
   ntpOk = synchroniserNTP();
   setup_mqtt();
-
+  mqttClient.onMessage(onMqttMessage);
 
   // d) Ecran d'accueil pendant 3 s
   afficherAccueil();
@@ -327,9 +453,25 @@ void setup()
 void loop()
 {
   mqttClient.poll();
-  // LED de vie : change d'état toutes les 500 ms
-  ledVie = !ledVie;
-  digitalWrite(PIN_LED_VIE, ledVie ? HIGH : LOW);
+    // LED de vie : allumée la première moitié de la période (pas de 100 ms)
+  digitalWrite(PIN_LED_VIE, (tempsLed % periodeLed) < (unsigned long)periodeLed / 2 ? HIGH : LOW);
+  tempsLed += TICK_MS;
+
+  // Commande 10 : forcer la mise à l'heure
+  if (demandeMiseALHeure)
+  {
+    demandeMiseALHeure = false;
+    ntpOk = synchroniserNTP();
+  }
+
+  // La machine d'état n'avance qu'une fois tous les 5 ticks (500 ms)
+  tick++;
+  if (tick < TICKS_PAR_ETAT)
+  {
+    delay(TICK_MS);
+    return;
+  }
+  tick = 0;
 
   // Date/heure rafraîchie à chaque tour (500 ms) pour ne sauter aucune seconde
   afficherDate();
@@ -364,8 +506,13 @@ void loop()
 
   case ATTENTE_3:
     etat = LECTURE_CAPTEUR;
+    if (mesureActive)
+    {
+      lireCapteur();
+      publierDonnees();
+    }
     break;
   }
 
-  delay(500);
+  delay(TICK_MS);
 }
