@@ -105,6 +105,8 @@ bool ntpOk = false;
 int cyclesSansNtp = 0;
 int cyclesSansMqtt = 0;
 
+
+
 // a) Connexion au réseau WIFI : retourne true si OK, false sinon
 bool setup_wifi()
 {
@@ -479,8 +481,13 @@ void loop()
   switch (etat)
   {
   case LECTURE_CAPTEUR:
-    lireCapteur();
-    publierDonnees();
+
+  if (mesureActive)
+  {
+      lireCapteur();
+      publierDonnees();
+  }
+    
 
      if (!mqttClient.connected() && ++cyclesSansMqtt >= MQTT_CYCLES_RELANCE)
     {
@@ -506,12 +513,6 @@ void loop()
 
   case ATTENTE_3:
     etat = LECTURE_CAPTEUR;
-    if (mesureActive)
-    {
-      lireCapteur();
-      publierDonnees();
-    }
-    break;
   }
 
   delay(TICK_MS);
