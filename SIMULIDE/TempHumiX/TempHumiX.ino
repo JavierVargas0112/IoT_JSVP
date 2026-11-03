@@ -105,6 +105,8 @@ bool ntpOk = false;
 int cyclesSansNtp = 0;
 int cyclesSansMqtt = 0;
 
+int derniereT10 = -9999; // dernière température publiée (en dixièmes)
+int derniereH10 = -9999; // dernière humidité publiée (en dixièmes)
 
 
 // a) Connexion au réseau WIFI : retourne true si OK, false sinon
@@ -267,6 +269,14 @@ void publierMessage(const char *topic, const char *valeur)
   mqttClient.endMessage();
 }
 
+void publierVersion()
+{
+  if (mqttClient.connected())
+  {
+    publierMessage(TOPIC_VERSION, VERSION);
+  }
+}
+
 void publierDonnees()
 {
   char texte[24];
@@ -275,7 +285,19 @@ void publierDonnees()
     return;
   }
 
-  publierMessage(TOPIC_VERSION, VERSION);
+  
+  int t10 = lround(temperature * 10);
+  int h10 = lround(humidite * 10);
+
+  if(t10 == derniereT10 && h10 == derniereH10)
+  {
+    return;// rien a change
+  }
+
+  derniereH10 = h10;
+  derniereT10 = t10;
+
+  //publierMessage(TOPIC_VERSION, VERSION); --> 6.1.6
   dtostrf(temperature, 0, 1, texte); 
 
   publierMessage(TOPIC_TEMPERATURE, texte);
@@ -464,6 +486,10 @@ void loop()
   {
     demandeMiseALHeure = false;
     ntpOk = synchroniserNTP();
+    if (ntpOk)
+    {
+      publierVersion();
+    }
   }
 
   // La machine d'état n'avance qu'une fois tous les 5 ticks (500 ms)
@@ -513,6 +539,7 @@ void loop()
 
   case ATTENTE_3:
     etat = LECTURE_CAPTEUR;
+    break
   }
 
   delay(TICK_MS);
