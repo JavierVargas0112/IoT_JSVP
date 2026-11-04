@@ -8,6 +8,7 @@
 .env
 .env.*
 arduino_secrets.h.ino
+secrets_mqtt.py
 
 #Environemments Python et caches
 
@@ -24,3 +25,5 @@ arduino_secrets.h
 
 #Configuration PyCharm
 .idea/
+
+
