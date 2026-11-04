@@ -11,6 +11,7 @@ from mon_ihm import Ui_MainWindow
 from secrets_mqtt import MQTT_USER, MQTT_PASSWORD
 
 import _sqlite3
+from dialogue_courbe import CourbeDialog
 
 id_pc = 44987
 
@@ -55,6 +56,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.btnBlink.clicked.connect(self.customBlink)
         self.lneBargraph.returnPressed.connect(self.setBargraph)
         self.actionQuit.triggered.connect(self.quit)
+        self.actionGraph.triggered.connect(self.showGraph)
 
     def display(self):
         # Llamada cada 1000 ms por el timer
@@ -179,6 +181,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.disconnectMQTT()
         event.accept()
 
+    def showGraph(self):
+        dialog = CourbeDialog()
+        dialog.exec()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

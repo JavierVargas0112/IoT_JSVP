@@ -26,6 +26,8 @@ class Ui_MainWindow(object):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(440, 640)
+        self.actionGraph = QAction(MainWindow)
+        self.actionGraph.setObjectName(u"actionGraph")
         self.actionQuit = QAction(MainWindow)
         self.actionQuit.setObjectName(u"actionQuit")
         self.actionAbout = QAction(MainWindow)
@@ -264,6 +266,8 @@ class Ui_MainWindow(object):
 
         self.menubar.addAction(self.menuFichier.menuAction())
         self.menubar.addAction(self.menuAide.menuAction())
+        self.menuFichier.addAction(self.actionGraph)
+        self.menuFichier.addSeparator()
         self.menuFichier.addAction(self.actionQuit)
         self.menuAide.addAction(self.actionAbout)
 
@@ -274,6 +278,10 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"Mon capteur IDO via MQTT (c)2026 CERI SN - PPI", None))
+        self.actionGraph.setText(QCoreApplication.translate("MainWindow", u"Afficher les courbes\u2026", None))
+#if QT_CONFIG(shortcut)
+        self.actionGraph.setShortcut(QCoreApplication.translate("MainWindow", u"Ctrl+G", None))
+#endif // QT_CONFIG(shortcut)
         self.actionQuit.setText(QCoreApplication.translate("MainWindow", u"Quitter", None))
 #if QT_CONFIG(shortcut)
         self.actionQuit.setShortcut(QCoreApplication.translate("MainWindow", u"Ctrl+Q", None))

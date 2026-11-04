@@ -410,6 +410,8 @@
     <property name="title">
      <string>Fichier</string>
     </property>
+    <addaction name="actionGraph"/>
+    <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuAide">
@@ -422,6 +424,14 @@
    <addaction name="menuAide"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionGraph">
+   <property name="text">
+    <string>Afficher les courbes…</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+G</string>
+   </property>
+  </action>
   <action name="actionQuit">
    <property name="text">
     <string>Quitter</string>
