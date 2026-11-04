@@ -35,6 +35,7 @@ if __name__ == '__main__':
         print("5 - Clignotement rapide")
         print("6 - Clignotement personnalisé")
         print("7 - Ecriture du bargraphe")
+        print("8 - Afficher les mesures")
         print("Q - Quitter")
         car = input("Votre choix : ")
         match car.upper():
