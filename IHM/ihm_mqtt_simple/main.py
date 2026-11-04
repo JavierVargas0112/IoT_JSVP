@@ -10,6 +10,8 @@ from thread_mqtt import ThreadMQTT
 from mon_ihm import Ui_MainWindow
 from secrets_mqtt import MQTT_USER, MQTT_PASSWORD
 
+import _sqlite3
+
 id_pc = 44987
 
 topic_commande = f"/iot/COMMAND_{id_pc}"

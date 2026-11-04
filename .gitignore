@@ -27,3 +27,6 @@ arduino_secrets.h
 .idea/
 
 
+#Base de donnes
+*.db
+

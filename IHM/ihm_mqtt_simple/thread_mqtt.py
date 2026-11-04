@@ -14,12 +14,18 @@ class ThreadMQTT(Thread):
         self.stop = False
 
     def run(self):
-        self.mqtt.subscribe_mqtt(topic_version)
-        self.mqtt.subscribe_mqtt(topic_temperature)
-        self.mqtt.subscribe_mqtt(topic_humidite)
-        self.mqtt.subscribe_mqtt(topic_datetime)
-        while not self.stop:
-            self.mqtt.wait_mqtt(timeout=1.0)
+
+        self.mqtt.connect_sqlite()
+        try:
+            self.mqtt.subscribe_mqtt(topic_version)
+            self.mqtt.subscribe_mqtt(topic_temperature)
+            self.mqtt.subscribe_mqtt(topic_humidite)
+            self.mqtt.subscribe_mqtt(topic_datetime)
+            while not self.stop:
+                self.mqtt.wait_mqtt(timeout=1.0)
+        finally:
+            self.mqtt.disconnect_sqlite()
+
 
     def stopthread(self):
         self.stop = True
