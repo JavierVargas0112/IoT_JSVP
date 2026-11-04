@@ -144,7 +144,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #"50"
 
         if self.envoyer(topic_commande, "50"):
-            self.statusbar("Clignotement rapide")
+            self.statusbar.showMessage("Clignotement rapide")
 
     def slowBlink(self):
         if self.envoyer(topic_commande, "40"):
