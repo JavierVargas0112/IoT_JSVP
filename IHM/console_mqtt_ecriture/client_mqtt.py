@@ -9,6 +9,10 @@ class ClientMQTT:
         self.username = username
         self.password = password
         self.client = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION2, self.client_id)
+        self.version = ""
+        self.temperature = ""
+        self.humidite = ""
+        self.date_IdO = ""
 
     def connect_mqtt(self) -> mqtt_client:
         def on_connect(client, userdata, flags, rc, properties):
@@ -33,7 +37,14 @@ class ClientMQTT:
 
     def subscribe_mqtt(self, topic, qos= 0):
         def on_message(client,userdata, msg):
-            print(f"Reception : `{msg.payload.decode()}` from '{msg.topic}'")
+            if "VERSION_" in msg.topic:
+                self.version = msg.payload.decode()
+            elif "TEMPERATURE_" in msg.topic:
+                self.temperature = msg.payload.decode()
+            elif "HUMIDITY_" in msg.topic:
+                self.humidite = msg.payload.decode()
+            elif "GET_DATE_" in msg.topic:
+                self.date_IdO = msg.payload.decode()
         self.client.subscribe(topic, qos)
         self.client.on_message = on_message
         print(f"Waiting for topic : `{topic}`")

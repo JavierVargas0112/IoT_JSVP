@@ -1,6 +1,8 @@
 from client_mqtt import ClientMQTT
 from secrets_mqtt import MQTT_USER, MQTT_PASSWORD
 
+from thread_mqtt import ThreadMQTT
+
 username = MQTT_USER
 password = MQTT_PASSWORD
 
@@ -19,7 +21,8 @@ if __name__ == '__main__':
     print("Instanciation de votre ClientMQTT")
     mqtt = ClientMQTT(broker, port, f"Client_E{id_pc}", username, password)
     mqtt.connect_mqtt()
-    mqtt.client.loop_start()
+    thread_mqtt = ThreadMQTT(mqtt)
+    thread_mqtt.start()
 
     car = ' '
     while car.upper() != 'Q':
@@ -73,10 +76,13 @@ if __name__ == '__main__':
                     print(f"Ecriture de la valeur {valeur} sur le bargraphe du capteur : {id_pc}")
                 else:
                     print("Valeur invalide (0 à 1023)")
-
+            case '8':
+                print(f"Version : {mqtt.version}  Date : {mqtt.date_IdO}")
+                print(f"Température : {mqtt.temperature} °C  Humidité : {mqtt.humidite} %")
             case 'Q':
                 print("Arrêt du client MQTT")
-                mqtt.client.loop_stop()
+                thread_mqtt.stopthread()
+                thread_mqtt.join()
                 mqtt.disconnect_mqtt()
 
             case _:
