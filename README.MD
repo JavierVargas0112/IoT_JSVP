@@ -164,5 +164,6 @@ The database is opened inside the MQTT thread on purpose. sqlite3 won't let you 
 
 ## Authors
 
-Javier Vargas, IMT Nord Europe, 2026.
+Javier Santiago Vargas Parra, IMT Nord Europe, 2026.
+Supervisor: Abdellah Bouchama.
 Lab sheets by J.F. Béguin, A. Guilloteau, D. Juge-Hubert and A. Bouchama.

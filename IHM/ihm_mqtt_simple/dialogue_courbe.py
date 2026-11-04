@@ -86,7 +86,8 @@ class CourbeDialog(QDialog, Ui_GraphWindow):
         ax.legend()
         fig.tight_layout()
 
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
+        ax.xaxis.set_major_locator(mdates.MinuteLocator())
         fig.autofmt_xdate()
 
         pixmap = self.figure_to_pixmap(fig)
