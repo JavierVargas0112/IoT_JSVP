@@ -539,7 +539,7 @@ void loop()
 
   case ATTENTE_3:
     etat = LECTURE_CAPTEUR;
-    break
+    break;
   }
 
   delay(TICK_MS);
